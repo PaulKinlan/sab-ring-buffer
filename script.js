@@ -24,13 +24,13 @@ class RingBuffer {
     if (sab instanceof SharedArrayBuffer == false)
       throw new Error("Parameter 0 is not a Shared Array Buffer");
 
-    this._length = sab.length - Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH;
+    this._length = sab.byteLength - (Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH);
     this._sab = sab;
-    this._header = new Uint32Array(sab, 0, RingBuffer.HEADER_LENGTH);
-    this._body = new Uint8Array(sab, Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LEGNTH);
+    this._header = new Uint32Array(sab, 0, Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LEGNTH);
+    this._body = new Uint8Array(sab, 0, Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LEGNTH);
 
-    this._readIndex = Atomics.load(this._header, 0);
-    this._writeIndex = Atomics.load(this._header, 1);
+    this._readIndex = Atomics.load(this._header, RingBuffer.HEADER.READ);
+    this._writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
   }
   
   append(data) {
@@ -40,9 +40,10 @@ class RingBuffer {
       
       Atomics.store(this._body, writeIndex, byte);
 
-      this._writeIndex = Atomics.add(this._header, RingBuffer.HEADER.WRITE, 1 );
+      this._writeIndex = Atomics.add(this._header, RingBuffer.HEADER.WRITE, 1);
       
       if (this._writeIndex == this.length) {
+        console.log('wrap')
         this._writeIndex = Atomics.store(this._header, RingBuffer.HEADER.WRITE, 1);
       }
     }
@@ -92,6 +93,6 @@ RingBuffer.HEADER_LENGTH = Object.keys(RingBuffer.HEADER).length;
 
 const rb = RingBuffer.create(1024)
 
-rb.append([1,2])
+rb.append([1,2,3,4])
 
 rb.debug();
