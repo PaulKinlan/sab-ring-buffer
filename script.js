@@ -1,6 +1,8 @@
 class RingBuffer {
   /* 
-    Create's a Ring Buffer backed by a correctly sized SAB
+    Create's a Ring Buffer backed by a correctly sized SAB.
+    
+    There can only be one writer and one reader.
   */
   static create(length) {
     const buffer = new SharedArrayBuffer(
@@ -32,18 +34,39 @@ class RingBuffer {
   }
 
   append(data) {
-    for (const byte in data) {
+    for (const byte of data) {
       const writeIndex = Atomics.load(this._header, 1);
       console.log(writeIndex, byte)
       
       Atomics.store(this._body, writeIndex, byte);
 
       this._writeIndex = Atomics.add(this._header, 1, 1);
+      
+      if (this._writeIndex == this.length) {
+        this._writeIndex = Atomics.add(this._header, 1, 1);
+      }
     }
   }
 
   // Reads data up until the
-  read() {}
+  read() {
+    const readIndex = Atomics.load(this._header, 0);
+    const writeIndex = Atomics.load(this._header, 1);
+    
+    if (readIndex == writeIndex) return undefined;
+    
+    const value = Atomics.load(this._body) =
+    
+    this._readIndex = Atomics.add(this._header, 0, 1);
+    if (this._readIndex == this.length) {
+      this._readIndex = Atomics.add(this._header, 0, 1);
+    }
+    
+  }
+  
+  readToHead() {
+    
+  }
   
   debug() {
     console.log(this._sab)
