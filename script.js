@@ -9,10 +9,7 @@ class RingBuffer {
       length + Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH
     );
     const header = new Uint32Array(buffer, 0, RingBuffer.HEADER_LENGTH);
-    const body = new Uint8Array(
-      buffer,
-      Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH
-    );
+    const body = new Uint8Array(buffer, RingBuffer.HEADER_LENGTH, length);
     header.set([0 /* readIndex */, 0 /* writeIndex */], 0);
 
     return new RingBuffer(buffer);
@@ -31,7 +28,7 @@ class RingBuffer {
       sab.byteLength - Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH;
     this._sab = sab;
     this._header = new Uint32Array(sab, 0, RingBuffer.HEADER_LENGTH);
-    this._body = new Uint8Array(sab, 0, this._length);
+    this._body = new Uint8Array(sab, RingBuffer.HEADER_LENGTH, this._length);
 
     this._readIndex = Atomics.load(this._header, RingBuffer.HEADER.READ);
     this._writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
