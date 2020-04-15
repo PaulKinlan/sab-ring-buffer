@@ -18,7 +18,7 @@ class RingBuffer {
   static from(sab) {
     return new RingBuffer(buffer);
   }
-
+  
   constructor(sab) {
     if (!!sab == false) throw new Error("Shared Array Buffer is undefined");
     if (sab instanceof SharedArrayBuffer == false)
@@ -32,7 +32,7 @@ class RingBuffer {
     this._readIndex = Atomics.load(this._header, 0);
     this._writeIndex = Atomics.load(this._header, 1);
   }
-
+  
   append(data) {
     for (const byte of data) {
       const writeIndex = Atomics.load(this._header, 1);
@@ -55,17 +55,23 @@ class RingBuffer {
     
     if (readIndex == writeIndex) return undefined;
     
-    const value = Atomics.load(this._body) =
+    const value = Atomics.load(this._body, readIndex);
     
     this._readIndex = Atomics.add(this._header, 0, 1);
     if (this._readIndex == this.length) {
       this._readIndex = Atomics.add(this._header, 0, 1);
     }
     
+    return value
   }
   
   readToHead() {
     
+  }
+  
+  clear() {
+    this._readIndex = Atomics.store(this._header, 0, 0);
+    this._writeIndex = Atomics.store(this._header, 1, 0);
   }
   
   debug() {
@@ -73,6 +79,13 @@ class RingBuffer {
     console.log(this._header);
     console.log(this._body);
   }
+}
+
+RingBuffer.CONST = {
+  READ: 0,
+  WRITE: 1,
+  READING: 2,
+  WRITING: 4
 }
 
 const rb = RingBuffer.create(1024)
