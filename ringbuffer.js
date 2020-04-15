@@ -1,4 +1,4 @@
-class RingBuffer {
+export default class RingBuffer {
   /* 
     Create's a Ring Buffer backed by a correctly sized SAB.
     
@@ -15,7 +15,11 @@ class RingBuffer {
   }
 
   static from(sab) {
-    return new RingBuffer(buffer);
+    return new RingBuffer(sab);
+  }
+  
+  get buffer() {
+    return this._sab;
   }
 
   constructor(sab) {
