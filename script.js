@@ -73,7 +73,21 @@ class RingBuffer {
   }
 
   readToHead() {
+    const readIndex = Atomics.load(this._header, RingBuffer.HEADER.READ);
+    const writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
     
+    let data;
+    
+    if ( writeIndex > readIndex) {    
+      data = this._body.subarray(readIndex, writeIndex);
+    } else {
+      // Data has wrapped around the circular buffer.
+      data = 
+    }
+    
+    this._readIndex = Atomics.store(this._header, RingBuffer.HEADER.READ, writeIndex);
+    
+    return data;
   }
 
   clear() {
@@ -97,7 +111,7 @@ RingBuffer.HEADER = {
 
 RingBuffer.HEADER_LENGTH = Object.keys(RingBuffer.HEADER).length;
 
-const rb = RingBuffer.create(3);
+const rb = RingBuffer.create(10);
 
 rb.append([1, 2, 3, 4]);
 
