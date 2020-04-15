@@ -44,8 +44,7 @@ export default class RingBuffer {
   append(data) {
     for (const byte of data) {
       const writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
-      console.log(writeIndex, byte);
-
+      
       Atomics.store(this._body, writeIndex, byte);
 
       this._writeIndex = Atomics.add(this._header, RingBuffer.HEADER.WRITE, 1);
