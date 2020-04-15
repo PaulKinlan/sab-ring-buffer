@@ -69,29 +69,17 @@ class RingBuffer {
 
     this._readIndex = Atomics.add(this._header, RingBuffer.HEADER.READ, 1);
 
-    if (this._readIndex == this._length) {
-      this._readIndex = Atomics.add(this._header, RingBuffer.HEADER.READ, 1);
+    if (this._readIndex == this._length - 1) {
+      this._readIndex = Atomics.store(this._header, RingBuffer.HEADER.READ, 0);
     }
 
     return value;
   }
 
-  *readToHead() {
-    const readIndex = Atomics.load(this._header, RingBuffer.HEADER.READ);
-    const writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
-
-    while (this._readIndex != this._writeIndex) {
-      yield Atomics.load(this._body, this._readIndex);
-
-      this._readIndex = Atomics.add(this._header, RingBuffer.HEADER.READ, 1);
-
-      if (this._readIndex == this._length) {
-        this._readIndex = Atomics.store(
-          this._header,
-          RingBuffer.HEADER.READ,
-          0
-        );
-      }
+  * readToHead() {
+    let data;
+    while((data = this.read()) != undefined) {
+      yield data;
     }
   }
 
