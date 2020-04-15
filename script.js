@@ -28,7 +28,11 @@ class RingBuffer {
       sab.byteLength - Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH;
     this._sab = sab;
     this._header = new Uint32Array(sab, 0, RingBuffer.HEADER_LENGTH);
-    this._body = new Uint8Array(sab, Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH, this._length);
+    this._body = new Uint8Array(
+      sab,
+      Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH,
+      this._length
+    );
 
     this._readIndex = Atomics.load(this._header, RingBuffer.HEADER.READ);
     this._writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
@@ -64,7 +68,7 @@ class RingBuffer {
     const value = Atomics.load(this._body, readIndex);
 
     this._readIndex = Atomics.add(this._header, RingBuffer.HEADER.READ, 1);
-    
+
     if (this._readIndex == this._length) {
       this._readIndex = Atomics.add(this._header, RingBuffer.HEADER.READ, 1);
     }
@@ -72,24 +76,23 @@ class RingBuffer {
     return value;
   }
 
-  * readToHead() {
-    
+  *readToHead() {
     const readIndex = Atomics.load(this._header, RingBuffer.HEADER.READ);
     const writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
-    
-    while (true) { 
-      
-      
-      
-      yield 
-   
-    
-      this._readIndex = Atomics.store(this._header, RingBuffer.HEADER.READ, writeIndex);
-    
-           
+
+    while (this._readIndex != this._writeIndex) {
+      yield Atomics.load(this._body, this._readIndex);
+
+      this._readIndex = Atomics.add(this._header, RingBuffer.HEADER.READ, 1);
+
+      if (this._readIndex == this._length) {
+        this._readIndex = Atomics.store(
+          this._header,
+          RingBuffer.HEADER.READ,
+          0
+        );
+      }
     }
-    
-    return data;
   }
 
   clear() {
