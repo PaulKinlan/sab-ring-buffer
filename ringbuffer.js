@@ -1,3 +1,19 @@
+/*
+   Copyright 2020 Google Inc.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
 export default class RingBuffer {
   /* 
     Create's a Ring Buffer backed by a correctly sized SAB.
@@ -37,17 +53,17 @@ export default class RingBuffer {
       this._length
     );
 
-    this._readIndex = Atomics.load(this._header, RingBuffer.HEADER.READ);
-    this._writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
+    this._readIndex = Atomics.load(this._header, HEADER.READ);
+    this._writeIndex = Atomics.load(this._header, HEADER.WRITE);
   }
 
   append(data) {
     for (const byte of data) {
-      const writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
+      const writeIndex = Atomics.load(this._header, HEADER.WRITE);
       
       Atomics.store(this._body, writeIndex, byte);
 
-      this._writeIndex = Atomics.add(this._header, RingBuffer.HEADER.WRITE, 1);
+      this._writeIndex = Atomics.add(this._header, HEADER.WRITE, 1);
 
       if (this._writeIndex == this._length - 1) {
         this._writeIndex = Atomics.store(
@@ -61,17 +77,17 @@ export default class RingBuffer {
 
   // Reads the next byte of data
   read() {
-    const readIndex = Atomics.load(this._header, RingBuffer.HEADER.READ);
-    const writeIndex = Atomics.load(this._header, RingBuffer.HEADER.WRITE);
+    const readIndex = Atomics.load(this._header, HEADER.READ);
+    const writeIndex = Atomics.load(this._header, HEADER.WRITE);
 
     if (readIndex == writeIndex) return undefined;
 
     const value = Atomics.load(this._body, readIndex);
 
-    this._readIndex = Atomics.add(this._header, RingBuffer.HEADER.READ, 1);
+    this._readIndex = Atomics.add(this._header, HEADER.READ, 1);
 
     if (this._readIndex == this._length - 1) {
-      this._readIndex = Atomics.store(this._header, RingBuffer.HEADER.READ, 0);
+      this._readIndex = Atomics.store(this._header, HEADER.READ, 0);
     }
 
     return value;
@@ -86,8 +102,8 @@ export default class RingBuffer {
   }
 
   clear() {
-    this._readIndex = Atomics.store(this._header, RingBuffer.HEADER.READ, 0);
-    this._writeIndex = Atomics.store(this._header, RingBuffer.HEADER.WRITE, 0);
+    this._readIndex = Atomics.store(this._header, HEADER.READ, 0);
+    this._writeIndex = Atomics.store(this._header, HEADER.WRITE, 0);
   }
 
   debug() {
@@ -97,11 +113,11 @@ export default class RingBuffer {
   }
 }
 
-RingBuffer.HEADER = {
+const HEADER = {
   READ: 0,
   WRITE: 1,
   READING: 2,
   WRITING: 4
 };
 
-RingBuffer.HEADER_LENGTH = Object.keys(RingBuffer.HEADER).length;
+const HEADER_LENGTH = Object.keys(RingBuffer.HEADER).length;
