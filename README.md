@@ -1,37 +1,81 @@
-Welcome to Glitch
-=================
+Ring Buffer using a Shared Array Buffer
+=======================================
 
-Click `Show` in the header to see your app live. Updates to your code will instantly deploy and update live.
+I needed to communicate between a window and a worker, where the worker wouldn't have enough time
+to process incoming messages (there was 100% utilisation via a WASM app in the worker).
 
-**Glitch** is the friendly community where you'll build the app of your dreams. Glitch lets you instantly create, remix, edit, and host an app, bot or site, and you can invite collaborators or helpers to simultaneously edit code with you.
+Shared Array Buffers (SAB) allow a window and workers to share a region of memory, but that memory can is
+a fixed size that is defined at the creation time of the SAB
 
-Find out more [about Glitch](https://glitch.com/about).
+Usage
+=====
+
+## Create a Ring Buffer
+
+```
+const rb = RingBuffer.create(1024)
+```
+
+This creates a Ring Buffer of length 1024 bytes (and some header information)
+
+## Re-initalize a Ring Buffer
+
+We can't pass class over post message, so we have to re-initialieze the Ring Buffer from a SAB.
+
+```
+const rb = RingBuffer.from(sab)
+```
+
+## Access the Raw Buffer
+
+```
+const rb = RingBuffer.create(1024)
+
+rb.buffer
+```
+
+## Appebd Data to an Ring Buffer
+
+```
+const rb = RingBuffer.create(1024)
+
+rb.append([1,2,3,4])
+```
+
+The Ring Buffer will contain 1,2,3,4
+
+### Read a byte of data from Ring Buffer
+
+```
+const rb = RingBuffer.create(1024)
+
+rb.append([1,2,3,4])
+const byte = rb.read() // 1
+const nextByte = rb.read() // 2
+```
+
+Reads a byte of data from the Ring Buffer, and advances the internal pointer to the next entry.
+
+### Read all the remaining bytes in the Ring Buffer
+
+`readToHead()` is a generator that returns an itterator.
 
 
-Your Project
-------------
+```
+const rb = RingBuffer.create(1024)
 
-### ← README.md
+rb.append([1,2,3,4])
+const byte = rb.read() // 1
+const bytes = [...rb.readToHead()] // [2, 3, 4]
+```
 
-That's this file, where you can tell people what your cool website does and how you built it.
+### Clear the Ring Buffer
 
-### ← index.html
+```
+const rb = RingBuffer.create(1024)
 
-Where you'll write the content of your website. 
+rb.append([1,2,3,4])
+rb.clear()
+const byte = rb.read() // undefined
+```
 
-### ← style.css
-
-CSS files add styling rules to your content.
-
-### ← script.js
-
-If you're feeling fancy you can add interactivity to your site with JavaScript.
-
-### ← assets
-
-Drag in `assets`, like images or music, to add them to your project
-
-Made by [Glitch](https://glitch.com/)
--------------------
-
-\ ゜o゜)ノ
