@@ -22,10 +22,10 @@ export default class RingBuffer {
   */
   static create(length) {
     const buffer = new SharedArrayBuffer(
-      length + Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH
+      length + Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH
     );
-    const header = new Uint32Array(buffer, 0, RingBuffer.HEADER_LENGTH);
-    const body = new Uint8Array(buffer, RingBuffer.HEADER_LENGTH, length);
+    const header = new Uint32Array(buffer, 0, HEADER_LENGTH);
+    const body = new Uint8Array(buffer, HEADER_LENGTH, length);
 
     return new RingBuffer(buffer);
   }
@@ -37,24 +37,29 @@ export default class RingBuffer {
   get buffer() {
     return this._sab;
   }
+  
+  get length() {
+    let readIndex = Atomics.load(this._header, HEADER.READ);
+    let writeIndex = Atomics.load(this._header, HEADER.WRITE);
+    
+    const delta = writeIndex - readIndex 
+    return (readIndex <= writeIndex) ? delta : delta + this._size;
+  }
 
   constructor(sab) {
     if (!!sab == false) throw new Error("Shared Array Buffer is undefined");
     if (sab instanceof SharedArrayBuffer == false)
       throw new Error("Parameter 0 is not a Shared Array Buffer");
 
-    this._length =
-      sab.byteLength - Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH;
+    this._size =
+      sab.byteLength - Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH;
     this._sab = sab;
-    this._header = new Uint32Array(sab, 0, RingBuffer.HEADER_LENGTH);
+    this._header = new Uint32Array(sab, 0, HEADER_LENGTH);
     this._body = new Uint8Array(
       sab,
-      Uint32Array.BYTES_PER_ELEMENT * RingBuffer.HEADER_LENGTH,
-      this._length
+      Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH,
+      this._size
     );
-
-    this._readIndex = Atomics.load(this._header, HEADER.READ);
-    this._writeIndex = Atomics.load(this._header, HEADER.WRITE);
   }
 
   append(data) {
@@ -65,10 +70,10 @@ export default class RingBuffer {
 
       this._writeIndex = Atomics.add(this._header, HEADER.WRITE, 1);
 
-      if (this._writeIndex == this._length - 1) {
+      if (this._writeIndex == this._size - 1) {
         this._writeIndex = Atomics.store(
           this._header,
-          RingBuffer.HEADER.WRITE,
+          HEADER.WRITE,
           0
         );
       }
@@ -77,17 +82,17 @@ export default class RingBuffer {
 
   // Reads the next byte of data
   read() {
-    const readIndex = Atomics.load(this._header, HEADER.READ);
-    const writeIndex = Atomics.load(this._header, HEADER.WRITE);
+    let readIndex = Atomics.load(this._header, HEADER.READ);
+    let writeIndex = Atomics.load(this._header, HEADER.WRITE);
 
     if (readIndex == writeIndex) return undefined;
 
     const value = Atomics.load(this._body, readIndex);
 
-    this._readIndex = Atomics.add(this._header, HEADER.READ, 1);
+    readIndex = Atomics.add(this._header, HEADER.READ, 1);
 
-    if (this._readIndex == this._length - 1) {
-      this._readIndex = Atomics.store(this._header, HEADER.READ, 0);
+    if (readIndex == this._size - 1) {
+      readIndex = Atomics.store(this._header, HEADER.READ, 0);
     }
 
     return value;
@@ -120,4 +125,4 @@ const HEADER = {
   WRITING: 4
 };
 
-const HEADER_LENGTH = Object.keys(RingBuffer.HEADER).length;
+const HEADER_LENGTH = Object.keys(HEADER).length;
