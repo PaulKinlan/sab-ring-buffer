@@ -62,7 +62,7 @@ const nextByte = rb.read() // 2
 
 ### Read all the remaining bytes in the Ring Buffer
 
-`readToHead()` is a generator that returns an itterator of the bytes that have not yet been read from the buffer.
+`readToHead()` is a generator that returns an iterator of the bytes that have not yet been read from the buffer.
 
 ```
 const rb = RingBuffer.create(1024)
