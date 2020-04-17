@@ -36,7 +36,7 @@ const rb = RingBuffer.create(1024)
 rb.buffer
 ```
 
-## Appebd Data to an Ring Buffer
+## Append Data to an Ring Buffer
 
 `append(array)` adds data into the buffer. If there are more entries to append that space, an exception is thrown.
 
