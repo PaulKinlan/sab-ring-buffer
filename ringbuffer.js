@@ -24,8 +24,6 @@ export default class RingBuffer {
     const buffer = new SharedArrayBuffer(
       length + Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH
     );
-    const header = new Uint32Array(buffer, 0, HEADER_LENGTH);
-    const body = new Uint8Array(buffer, HEADER_LENGTH, length);
 
     return new RingBuffer(buffer);
   }
@@ -62,20 +60,40 @@ export default class RingBuffer {
     );
   }
 
-  append(data) {
+  /*
+    data: An array of Uint8
+    attemptToFill (deafault: false): if true, will fill as much of the array as possible 
+      returning the items that couldn't be added.
+    
+  */
+  append(data, attemptToFill = false) {
+    let readIndex = Atomics.load(this._header, HEADER.READ);
+    let writeIndex = Atomics.load(this._header, HEADER.WRITE);
+    let cursor = 0;
+    
+    if (data.length > this._size - this.length && attemptToFill == false) {
+      throw new Error('Data being appeneded will overflow the buffer')
+    }
+    
     for (const byte of data) {
-      const writeIndex = Atomics.load(this._header, HEADER.WRITE);
+      writeIndex = Atomics.load(this._header, HEADER.WRITE);
+      readIndex = Atomics.load(this._header, HEADER.READ);
       
       Atomics.store(this._body, writeIndex, byte);
+      
+      writeIndex = Atomics.add(this._header, HEADER.WRITE, 1);
+      cursor++;
 
-      this._writeIndex = Atomics.add(this._header, HEADER.WRITE, 1);
-
-      if (this._writeIndex == this._size - 1) {
-        this._writeIndex = Atomics.store(
+      if (writeIndex == this._size - 1) {
+        Atomics.store(
           this._header,
           HEADER.WRITE,
           0
         );
+      }
+      
+      if (writeIndex == readIndex && attemptToFill) {
+        return data.slice(cursor - 1);
       }
     }
   }
@@ -107,8 +125,8 @@ export default class RingBuffer {
   }
 
   clear() {
-    this._readIndex = Atomics.store(this._header, HEADER.READ, 0);
-    this._writeIndex = Atomics.store(this._header, HEADER.WRITE, 0);
+    Atomics.store(this._header, HEADER.READ, 0);
+    Atomics.store(this._header, HEADER.WRITE, 0);
   }
 
   debug() {

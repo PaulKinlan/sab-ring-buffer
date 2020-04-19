@@ -38,15 +38,25 @@ rb.buffer
 
 ## Appebd Data to an Ring Buffer
 
-`append(array)` adds data into the buffer. If there are more entries to append that space, an exception is thrown.
+`append(array, fillToMax = false)` adds data into the buffer. If there are more entries to append that space, an exception is thrown.
 
 ```
-const rb = RingBuffer.create(1024)
+const rb = RingBuffer.create(5)
 
 rb.append([1,2,3,4])
 ```
 
-The Ring Buffer will contain 1,2,3,4
+The Ring Buffer will contain 1,2,3,4, with 1 element unfilled
+
+If the `append` method is called with `fillToMax: true` and the input array is too large, it add all the items it can and return what
+was not added to the buffer.
+
+```
+const rb = RingBuffer.create(5)
+
+rb.append([1,2,3,4]);
+rb.append([5,6,7], true); // => [6, 7]
+```
 
 ### Read a byte of data from Ring Buffer
 
