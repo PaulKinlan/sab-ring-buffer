@@ -31,17 +31,25 @@ export default class RingBuffer {
   static from(sab) {
     return new RingBuffer(sab);
   }
-  
+
   get buffer() {
     return this._sab;
   }
-  
+
+  get remaining() {
+    return this._size - this.length;
+  }
+
+  get size() {
+    return this._size;
+  }
+
   get length() {
     let readIndex = Atomics.load(this._header, HEADER.READ);
     let writeIndex = Atomics.load(this._header, HEADER.WRITE);
-    
-    const delta = writeIndex - readIndex 
-    return (readIndex <= writeIndex) ? delta : delta + this._size;
+
+    const delta = writeIndex - readIndex;
+    return readIndex <= writeIndex ? delta : delta + this._size;
   }
 
   constructor(sab) {
@@ -49,8 +57,7 @@ export default class RingBuffer {
     if (sab instanceof SharedArrayBuffer == false)
       throw new Error("Parameter 0 is not a Shared Array Buffer");
 
-    this._size =
-      sab.byteLength - Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH;
+    this._size = sab.byteLength - Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH;
     this._sab = sab;
     this._header = new Uint32Array(sab, 0, HEADER_LENGTH);
     this._body = new Uint8Array(
@@ -67,51 +74,60 @@ export default class RingBuffer {
     
   */
   append(data, attemptToFill = false) {
+    const { remaining, length, size } = this;
+
+    if (data.length > remaining && attemptToFill == false) {
+      throw new Error("Data being appeneded will overflow the buffer");
+    }
+
+    if (data instanceof Array == false && data instanceof Uint8Array == false) {
+      throw new Error(
+        "data is not an array that can be converted to Uint8array"
+      );
+    }
+
     let readIndex = Atomics.load(this._header, HEADER.READ);
     let writeIndex = Atomics.load(this._header, HEADER.WRITE);
-    let cursor = 0;
-    
-    if (data.length > this._size - this.length && attemptToFill == false) {
-      throw new Error('Data being appeneded will overflow the buffer')
-    }
-    
-    for (const byte of data) {
-      writeIndex = Atomics.load(this._header, HEADER.WRITE);
-      readIndex = Atomics.load(this._header, HEADER.READ);
-      
-      Atomics.store(this._body, writeIndex, byte);
-      
-      writeIndex = Atomics.add(this._header, HEADER.WRITE, 1);
-      cursor++;
+    let writeStart = writeIndex % size; 
+  
+    // We need at most two write operations.
+    // If the data will go past the end of the buffer, we need
+    // to write a 2nd batch from the start of the buffer.
+    // 9, 15
+    // batch1, pos [9] = val [0]
+    // batch2, pos [0] = val [1,2,3,4,5]
 
-      if (writeIndex == this._size - 1) {
-        Atomics.store(
-          this._header,
-          HEADER.WRITE,
-          0
-        );
-      }
+    const batch1 = data.slice(0, size - writeStart);
+    this._body.set(batch1, writeStart);
+    let writeLength = batch1.length;
+
+    if (writeLength < data.length) {
+      // We are wrapping around because there was more data.
+      const batch2 = data.slice(writeLength, remaining - writeLength);
+      this._body.set(batch2, 0);
+      writeLength += batch2.length;
       
-      if (writeIndex == readIndex && attemptToFill) {
-        return data.slice(cursor - 1);
-      }
+      Atomics.add(this._header, HEADER.WRITE, writeLength);
+      
+      if (attemptToFill && writeLength < data.length) {
+        return data.slice(writeLength);
+      } 
     }
+    else {
+      Atomics.add(this._header, HEADER.WRITE, writeLength);
+    }    
   }
 
-  // Reads the next byte of data
+  // Reads the next byte of data. Note: Assuming 4GB of addressable buffer.
   read() {
     let readIndex = Atomics.load(this._header, HEADER.READ);
     let writeIndex = Atomics.load(this._header, HEADER.WRITE);
 
     if (readIndex == writeIndex) return undefined;
 
-    const value = Atomics.load(this._body, readIndex);
+    const value = Atomics.load(this._body, readIndex % this._size);
 
     readIndex = Atomics.add(this._header, HEADER.READ, 1);
-
-    if (readIndex == this._size - 1) {
-      readIndex = Atomics.store(this._header, HEADER.READ, 0);
-    }
 
     return value;
   }
@@ -137,10 +153,8 @@ export default class RingBuffer {
 }
 
 const HEADER = {
-  READ: 0,
-  WRITE: 1,
-  READING: 2,
-  WRITING: 4
+  READ: 0, // 4GB buffer
+  WRITE: 1, // 4GB buffer
 };
 
 const HEADER_LENGTH = Object.keys(HEADER).length;

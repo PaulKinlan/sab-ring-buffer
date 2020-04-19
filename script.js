@@ -14,24 +14,59 @@ const gen = function*(maxItems = 10) {
 };
 
 // Append Error test
+const rb1 = RingBuffer.create(6);
+rb1.append([1, 2, 3]);
+rb1.append([4, 5]);
+const rb1data = [...rb1.readToHead()];
+console.assert(rb1data.length == 5, "rb1 not the correct length");
+console.assert(rb1data[0] == 1, "rb1[0] not the correct value");
+
+const rb2 = RingBuffer.create(6);
+rb2.append([1, 2, 3]);
+rb2.append([4, 5, 6]);
+const rb2data = [...rb2.readToHead()];
+console.assert(rb2data.length == 6, "rb2 not the correct length");
+console.assert(rb2data[5] == 6, "rb2[5] not the correct value");
+
+
+const rb3 = RingBuffer.create(6);
+rb3.append([1, 2, 3]);
+rb3.append([4, 5]);
+let rb3data = [...rb3.readToHead()];
+console.assert(rb3data.length == 5, "rb1 not the correct length");
+console.assert(rb3data[4] == 5, "rb1 not the correct value");
+rb3.append([7, 8, 9]);
+rb3data = [...rb3.readToHead()];
+console.assert(rb3data.length == 3, "rb1 not the correct length");
+console.assert(rb3data[2] == 9, "rb1 not the correct value");
+
+
+
+// Append Error test
 const rbError = RingBuffer.create(5);
-rbError.append([...gen(3)])
+rbError.append([1, 2, 3]);
 
 try {
-  rbError.append([...gen(3)])
+  rbError.append([4, 5, 6]);
 } catch (err) {
-  console.log('Expected exception.')
+  console.log("Expected exception.");
 }
 
+
+debugger;
 const rbFillMax = RingBuffer.create(5);
-rbFillMax.append([...gen(3)])
+rbFillMax.append([...gen(3)]);
 
 try {
   const remaining = rbFillMax.append([...gen(10)], true);
-  console.assert(remaining.length == 8, 'Not the correct number of elements remaining')
+  console.assert(
+    remaining.length == 8,
+    "Not the correct number of elements remaining"
+  );
 } catch (err) {
-  console.error(err)
+  console.error(err);
 }
+
 /*
 // Worker test
 const rb = RingBuffer.create(50);
