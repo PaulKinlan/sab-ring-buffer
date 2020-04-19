@@ -36,7 +36,7 @@ const rb = RingBuffer.create(1024)
 rb.buffer
 ```
 
-## Appebd Data to an Ring Buffer
+## Append Data to an Ring Buffer
 
 `append(array, fillToMax = false)` adds data into the buffer. If there are more entries to append that space, an exception is thrown.
 
@@ -72,7 +72,7 @@ const nextByte = rb.read() // 2
 
 ### Read all the remaining bytes in the Ring Buffer
 
-`readToHead()` is a generator that returns an itterator of the bytes that have not yet been read from the buffer.
+`readToHead()` is a generator that returns an iterator of the bytes that have not yet been read from the buffer.
 
 ```
 const rb = RingBuffer.create(1024)
