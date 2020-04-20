@@ -12,7 +12,7 @@ const gen = function*(maxItems = 10) {
     yield Math.floor(Math.random() * 100);
   }
 };
-
+/*
 // Append Error test
 const rb1 = RingBuffer.create(6);
 rb1.append([1, 2, 3]);
@@ -111,3 +111,33 @@ setTimeout(() => {
   rbBlocking1.append([1, 2, 3, 4]);
   rbBlocking1.eof = true;
 }, 2000);
+
+*/
+
+// Throwing heaps of data at it....
+const rbBlockingFill = RingBuffer.create(10 * 1024);
+
+const rbWorkerBlockingFill = new Worker("blocking-worker.js", {
+  type: "module",
+  name : "rbWorkerBlockingFill"
+});
+
+rbWorkerBlockingFill.postMessage(rbBlockingFill.buffer);
+
+let maxCounter = 1 * 1024 * 1024;
+let counter = 0;
+const fillFunc = () => {
+  if (rbBlockingFill.remaining > 1000) {
+    rbBlockingFill.append([...gen(1000)]);
+    counter += 1000;
+  }
+  
+  if (counter < maxCounter) {
+    setTimeout(fillFunc, 1);
+  }
+  else { 
+    rbBlockingFill.eof = true;
+  }
+}
+
+setTimeout(fillFunc, 1);
