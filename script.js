@@ -28,7 +28,6 @@ const rb2data = [...rb2.readToHead()];
 console.assert(rb2data.length == 6, "rb2 not the correct length");
 console.assert(rb2data[5] == 6, "rb2[5] not the correct value");
 
-
 const rb3 = RingBuffer.create(6);
 rb3.append([1, 2, 3]);
 rb3.append([4, 5]);
@@ -40,8 +39,6 @@ rb3data = [...rb3.readToHead()];
 console.assert(rb3data.length == 3, "rb1 not the correct length");
 console.assert(rb3data[2] == 9, "rb1 not the correct value");
 
-
-
 // Append Error test
 const rbError = RingBuffer.create(5);
 rbError.append([1, 2, 3]);
@@ -52,8 +49,6 @@ try {
   console.log("Expected exception.");
 }
 
-
-debugger;
 const rbFillMax = RingBuffer.create(5);
 rbFillMax.append([...gen(3)]);
 
@@ -67,21 +62,34 @@ try {
   console.error(err);
 }
 
-/*
-// Worker test
-const rb = RingBuffer.create(50);
+// // Worker test
+// const rb = RingBuffer.create(50);
 
-const worker = new Worker("worker.js", {
+// const worker = new Worker("worker.js", {
+//   type: "module"
+// });
+
+// worker.postMessage(rb.buffer);
+
+// setInterval(() => {
+//   const items = [...randGen(20)]
+//   console.log('setting sab from main thread', items)
+//   rb.append(items)
+// }, 500);
+
+// Blocking Read Worker test. And EOF.
+const rbBlocking = RingBuffer.create(50);
+
+const blockingWorkerEOF = new Worker("blocking-worker.js", {
   type: "module"
 });
 
-worker.postMessage(rb.buffer);
+blockingWorkerEOF.postMessage(rbBlocking.buffer);
+const items = [...gen(5)];
+console.log("Blocking Worker", "EOF. setting sab from main thread", items);
+rbBlocking.append(items);
 
-setInterval(() => {
-  const items = [...randGen(20)]
-  console.log('setting sab from main thread', items)
-  rb.append(items)
-}, 500);
-
-rb.debug();
-*/
+setTimeout(() => {
+  rbBlocking.append([1, 2, 3, 4]);
+  rbBlocking.eof = true;
+}, 2000);
