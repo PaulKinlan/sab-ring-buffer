@@ -84,6 +84,7 @@ export default class RingBuffer {
       this._size
     );
     
+    Atomics.store(this._state, READER_STATE.DATA_AVAILABLE, 0);
     Atomics.store(this._state, READER_STATE.EOF, 1);
   }
 
@@ -138,7 +139,6 @@ export default class RingBuffer {
     }
     
     Atomics.store(this._state, READER_STATE.DATA_AVAILABLE, 1);
-    
     Atomics.notify(this._state, READER_STATE.DATA_AVAILABLE);
   }
 
