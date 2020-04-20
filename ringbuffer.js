@@ -16,7 +16,7 @@
 
 export default class RingBuffer {
   static from(sab) {
-    return new RingBuffer(sab, true);
+    return new RingBuffer(sab);
   }
 
   get buffer() {
