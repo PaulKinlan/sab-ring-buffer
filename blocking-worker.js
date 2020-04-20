@@ -6,7 +6,7 @@ onmessage = (event) => {
   let char;
   while(rb.eof === false) {
     char = rb.blockingRead()
-    console.log(Date.now(), char);
+    console.log(name, Date.now(), char);
   }
-  console.log('done')
+  console.log(name, 'done')
 }

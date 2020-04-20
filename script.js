@@ -81,15 +81,33 @@ try {
 const rbBlocking = RingBuffer.create(50);
 
 const blockingWorkerEOF = new Worker("blocking-worker.js", {
-  type: "module"
+  type: "module",
+  name : "blockingWorkerEOF"
 });
 
 blockingWorkerEOF.postMessage(rbBlocking.buffer);
-const items = [...gen(5)];
+const items = [];
 console.log("Blocking Worker", "EOF. setting sab from main thread", items);
 rbBlocking.append(items);
 
 setTimeout(() => {
   rbBlocking.append([1, 2, 3, 4]);
   rbBlocking.eof = true;
+}, 2000);
+
+const rbBlocking1 = RingBuffer.create(50);
+
+const blockingWorkerEOF1 = new Worker("blocking-worker.js", {
+  type: "module",
+  name : "blockingWorkerEOF1"
+});
+
+blockingWorkerEOF1.postMessage(rbBlocking1.buffer);
+const items1 = [5,6,7,8];
+console.log("Blocking Worker", "EOF. setting sab from main thread", items1);
+rbBlocking1.append(items1);
+
+setTimeout(() => {
+  rbBlocking1.append([1, 2, 3, 4]);
+  rbBlocking1.eof = true;
 }, 2000);
