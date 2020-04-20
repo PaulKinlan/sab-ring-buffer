@@ -83,9 +83,6 @@ export default class RingBuffer {
       + Int32Array.BYTES_PER_ELEMENT * READER_STATE_LENGTH,
       this._size
     );
-    
-    Atomics.store(this._state, READER_STATE.DATA_AVAILABLE, 0);
-    Atomics.store(this._state, READER_STATE.EOF, 1);
   }
 
   /*
@@ -98,7 +95,7 @@ export default class RingBuffer {
     const { remaining, length, size } = this;
 
     if (data.length > remaining && attemptToFill == false) {
-      throw new Error("Data being appeneded will overflow the buffer");
+      throw new Error("Data being appended will overflow the buffer");
     }
 
     if (data instanceof Array == false && data instanceof Uint8Array == false) {
@@ -107,7 +104,6 @@ export default class RingBuffer {
       );
     }
 
-    let readIndex = Atomics.load(this._header, HEADER.READ);
     let writeIndex = Atomics.load(this._header, HEADER.WRITE);
     let writeStart = writeIndex % size; 
   
@@ -121,6 +117,7 @@ export default class RingBuffer {
     const batch1 = data.slice(0, size - writeStart);
     this._body.set(batch1, writeStart);
     let writeLength = batch1.length;
+    let slice = undefined;
 
     if (writeLength < data.length) {
       // We are wrapping around because there was more data.
@@ -130,8 +127,8 @@ export default class RingBuffer {
       
       Atomics.add(this._header, HEADER.WRITE, writeLength);
       
-      if (attemptToFill && writeLength < data.length) {
-        return data.slice(writeLength);
+      if (attemptToFill && (writeLength < data.length)) {
+        slice = data.slice(writeLength);
       } 
     }
     else {
@@ -140,6 +137,8 @@ export default class RingBuffer {
     
     Atomics.store(this._state, READER_STATE.DATA_AVAILABLE, 1);
     Atomics.notify(this._state, READER_STATE.DATA_AVAILABLE);
+    
+    return slice;
   }
 
   // Reads the next byte of data. Note: Assuming 4GB of addressable buffer.
@@ -149,7 +148,9 @@ export default class RingBuffer {
     
     if (readIndex == writeIndex - 1) {
       // The next blocking read, should wait.
+      console.log('next block')
       Atomics.store(this._state, READER_STATE.DATA_AVAILABLE, 0);
+      Atomics.notify(this._state, READER_STATE.DATA_AVAILABLE);
     }
 
     if (readIndex == writeIndex) {
@@ -181,12 +182,6 @@ export default class RingBuffer {
   clear() {
     Atomics.store(this._header, HEADER.READ, 0);
     Atomics.store(this._header, HEADER.WRITE, 0);
-  }
-
-  debug() {
-    console.log(this._sab);
-    console.log(this._header);
-    console.log(this._body);
   }
 }
 
