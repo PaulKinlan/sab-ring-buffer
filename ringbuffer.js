@@ -15,19 +15,6 @@
 */
 
 export default class RingBuffer {
-  /* 
-    Create's a Ring Buffer backed by a correctly sized SAB.
-    
-    There can only be one writer and one reader.
-  */
-  static create(length) {
-    const buffer = new SharedArrayBuffer(
-      length + Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH
-    );
-
-    return new RingBuffer(buffer);
-  }
-
   static from(sab) {
     return new RingBuffer(sab);
   }
@@ -51,20 +38,53 @@ export default class RingBuffer {
     const delta = writeIndex - readIndex;
     return readIndex <= writeIndex ? delta : delta + this._size;
   }
+  
+  get eof() {
+    return (this.length === 0 && Atomics.load(this._state, READER_STATE.EOF) === 0) ? true : false;
+  }
+  
+  set eof(val) {
+    let eofVal = !!val ? 0 : 1;
+    if (this.length === 0 && val) {
+      Atomics.notify(this._state, READER_STATE.DATA_AVAILABLE);
+    }
+    Atomics.store(this._state, READER_STATE.EOF, eofVal);
+  }
+  
+  /* 
+    Create's a Ring Buffer backed by a correctly sized SAB.
+    
+    There can only be one writer and one reader.
+  */
+  static create(length) {
+    const buffer = new SharedArrayBuffer(
+      length 
+      + Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH
+      + Int32Array.BYTES_PER_ELEMENT * READER_STATE_LENGTH
+    );
+    
+    return new RingBuffer(buffer);
+  }
 
   constructor(sab) {
     if (!!sab == false) throw new Error("Shared Array Buffer is undefined");
     if (sab instanceof SharedArrayBuffer == false)
       throw new Error("Parameter 0 is not a Shared Array Buffer");
 
-    this._size = sab.byteLength - Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH;
+    this._size = sab.byteLength
+        - Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH
+        - Int32Array.BYTES_PER_ELEMENT * READER_STATE_LENGTH;
     this._sab = sab;
     this._header = new Uint32Array(sab, 0, HEADER_LENGTH);
+    this._state = new Int32Array(sab, Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH, READER_STATE_LENGTH)
     this._body = new Uint8Array(
       sab,
-      Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH,
+      Uint32Array.BYTES_PER_ELEMENT * HEADER_LENGTH
+      + Int32Array.BYTES_PER_ELEMENT * READER_STATE_LENGTH,
       this._size
     );
+    
+    Atomics.store(this._state, READER_STATE.EOF, 1);
   }
 
   /*
@@ -115,21 +135,39 @@ export default class RingBuffer {
     }
     else {
       Atomics.add(this._header, HEADER.WRITE, writeLength);
-    }    
+    }
+    
+    Atomics.store(this._state, READER_STATE.DATA_AVAILABLE, 1);
+    
+    Atomics.notify(this._state, READER_STATE.DATA_AVAILABLE);
   }
 
   // Reads the next byte of data. Note: Assuming 4GB of addressable buffer.
   read() {
     let readIndex = Atomics.load(this._header, HEADER.READ);
     let writeIndex = Atomics.load(this._header, HEADER.WRITE);
+    
+    if (readIndex == writeIndex - 1) {
+      // The next blocking read, should wait.
+      Atomics.store(this._state, READER_STATE.DATA_AVAILABLE, 0);
+    }
 
-    if (readIndex == writeIndex) return undefined;
+    if (readIndex == writeIndex) {
+      return undefined;
+    }
 
     const value = Atomics.load(this._body, readIndex % this._size);
 
     readIndex = Atomics.add(this._header, HEADER.READ, 1);
 
     return value;
+  }
+  
+  blockingRead() {
+    if (this.eof) return undefined;
+    
+    Atomics.wait(this._state, READER_STATE.DATA_AVAILABLE, 0);
+    return this.read();
   }
 
   *readToHead() {
@@ -158,3 +196,11 @@ const HEADER = {
 };
 
 const HEADER_LENGTH = Object.keys(HEADER).length;
+
+const READER_STATE = {
+  DATA_AVAILABLE: 0,
+  WAITING: 1,
+  EOF: 2
+};
+
+const READER_STATE_LENGTH = Object.keys(READER_STATE).length;
